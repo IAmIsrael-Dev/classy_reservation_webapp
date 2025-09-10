@@ -1,0 +1,140 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+  
+		// These are rules for classy reservation beta
+		 match /users/{docId} {
+      allow read, write: if true;
+    }
+    match /restaurants/{docId} {
+      allow read, write: if true;
+    }
+    match /reservations/{docId} {
+      allow read, write: if true;
+    }
+    match /reviews/{docId} {
+      allow read, write: if true;
+    }
+    match /deals/{docId} {
+      allow read, write: if true;
+    }
+    match /notifications/{docId} {
+      allow read, write: if true;
+    }
+
+    // Also allow everything else (optional, for convenience)
+    match /{document=**} {
+      allow read, write: if true;
+    }
+		// These are rules for classy reservation beta
+  
+    match /userInformation/{parent}/notificstionList/{document} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    match /{path=**}/notificstionList/{document} {
+      allow read: if request.auth != null;
+    }
+
+		
+
+    match /chats/{parent}/messages/{document} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    match /{path=**}/messages/{document} {
+      allow read: if request.auth != null;
+    }
+
+
+    match /userInformation/{document} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    match /userInformation/{parent}/user_innerApp_infos/{document} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    match /{path=**}/user_innerApp_infos/{document} {
+      allow read: if request.auth != null;
+    }
+
+
+    match /chats/{document} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    match /user_info/{parent}/gratitude_messages/{document} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    match /{path=**}/gratitude_messages/{document} {
+      allow read: if request.auth != null;
+    }
+
+
+    match /user_info/{parent}/checkIn_info/{document} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    match /{path=**}/checkIn_info/{document} {
+      allow read: if request.auth != null;
+    }
+
+
+    match /community_feeds/{parent}/comments/{document} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    match /{path=**}/comments/{document} {
+      allow read: if request.auth != null;
+    }
+
+
+    match /user_info/{document} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    match /community_feeds/{document} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+		
+
+  }
+}
