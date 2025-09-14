@@ -37,9 +37,6 @@ export const setDataMode = (mode: DataMode): void => {
   currentDataMode = mode;
   localStorage.setItem('restaurant-panel-data-mode', mode);
   console.log(`🔄 Data mode switched to: ${mode.toUpperCase()}`);
-  
-  // Dispatch custom event to notify components of data mode change
-  window.dispatchEvent(new CustomEvent('datamode-changed', { detail: mode }));
 };
 
 export const toggleDataMode = (): DataMode => {
