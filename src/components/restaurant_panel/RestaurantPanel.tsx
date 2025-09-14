@@ -9,6 +9,9 @@ import { createRestaurant } from './services/restaurant';
 import { uploadImage } from './services/storage';
 import type { RegistrationData } from './auth/types';
 import type { RestaurantFormData } from './types/restaurant';
+import { DataModeToggleCompact } from './components/DataModeToggleCompact';
+import { Button } from '../ui/button';
+import { ArrowLeft } from 'lucide-react';
 
 
 interface RestaurantPanelProps {
@@ -182,10 +185,34 @@ const RestaurantPanel: React.FC<RestaurantPanelProps> = ({ onBackToDashboard }) 
     }
   };
 
+  // Global header component
+  const GlobalHeader = () => (
+    <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center space-x-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBackToDashboard}
+            className="flex items-center space-x-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Dashboard</span>
+          </Button>
+          <div className="h-4 w-px bg-border" />
+          <h1 className="text-lg font-medium">Restaurant Panel</h1>
+        </div>
+        
+        <DataModeToggleCompact />
+      </div>
+    </div>
+  );
+
   // Show loading spinner during initialization
   if (isInitializing) {
     return (
       <div className="dark">
+        <GlobalHeader />
         <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
           <div className="text-center space-y-4">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -199,35 +226,41 @@ const RestaurantPanel: React.FC<RestaurantPanelProps> = ({ onBackToDashboard }) 
   // Show dashboard if user is authenticated
   if (user) {
     return (
-      <RestaurantProvider key={user.id + (user.restaurantId || '')}>
-        <RoleProvider initialRole={user.role}>
-          <RestaurantDashboard
-            onLogout={handleLogout}
-            onBackToDashboard={onBackToDashboard}
-          />
-        </RoleProvider>
-      </RestaurantProvider>
+      <div className="dark">
+        <GlobalHeader />
+        <RestaurantProvider key={user.id + (user.restaurantId || '')}>
+          <RoleProvider initialRole={user.role}>
+            <RestaurantDashboard
+              onLogout={handleLogout}
+              onBackToDashboard={onBackToDashboard}
+            />
+          </RoleProvider>
+        </RestaurantProvider>
+      </div>
     );
   }
 
   // Show authentication screen
   return (
-    <RestaurantAuthScreen
-      email={email}
-      password={password}
-      role={selectedRole}
-      authMode={authMode}
-      isLoading={isLoading}
-      error={error}
-      onEmailChange={setEmail}
-      onPasswordChange={setPassword}
-      onRoleChange={setSelectedRole}
-      onAuthModeChange={setAuthMode}
-      onLogin={handleLogin}
-      onSignup={handleSignup}
-      onOwnerRegistration={handleOwnerRegistration}
-      onBackToDashboard={onBackToDashboard}
-    />
+    <div className="dark">
+      <GlobalHeader />
+      <RestaurantAuthScreen
+        email={email}
+        password={password}
+        role={selectedRole}
+        authMode={authMode}
+        isLoading={isLoading}
+        error={error}
+        onEmailChange={setEmail}
+        onPasswordChange={setPassword}
+        onRoleChange={setSelectedRole}
+        onAuthModeChange={setAuthMode}
+        onLogin={handleLogin}
+        onSignup={handleSignup}
+        onOwnerRegistration={handleOwnerRegistration}
+        onBackToDashboard={onBackToDashboard}
+      />
+    </div>
   );
 };
 
