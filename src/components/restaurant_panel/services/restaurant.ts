@@ -180,10 +180,58 @@ export const updateRestaurant = async (
   }
 };
 
-// Get restaurant by ID (mock implementation)
+// Get restaurant by ID
 export const getRestaurant = async (restaurantId: string): Promise<Restaurant | null> => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return mockRestaurants.find(r => r.id === restaurantId) || null;
+  if (isMockMode()) {
+    // Mock implementation
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const restaurant = mockRestaurants.find(r => r.id === restaurantId) || null;
+    console.log('✅ Retrieved restaurant (MOCK MODE):', restaurant?.name || 'Not found');
+    return restaurant;
+  }
+
+  // Real Firebase implementation
+  if (!firestore) {
+    throw new Error('Firebase not initialized');
+  }
+
+  try {
+    const { doc, getDoc } = await import('firebase/firestore');
+    
+    const restaurantDoc = await getDoc(doc(firestore, 'restaurants', restaurantId));
+    
+    if (!restaurantDoc.exists()) {
+      console.log('❌ Restaurant not found:', restaurantId);
+      return null;
+    }
+
+    const data = restaurantDoc.data();
+    const restaurant: Restaurant = {
+      id: restaurantDoc.id,
+      ...data,
+      createdAt: data.createdAt?.toDate() || new Date(),
+      updatedAt: data.updatedAt?.toDate() || new Date()
+    } as Restaurant;
+
+    console.log('✅ Retrieved restaurant (FIREBASE MODE):', restaurant.name);
+    return restaurant;
+  } catch (error: unknown) {
+    console.error('❌ Get restaurant error:', error);
+    
+    // Check if this is likely due to document not found or missing data
+    const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    
+    if (errorMessage.includes('not found') || 
+        errorMessage.includes('missing') || 
+        errorMessage.includes('does not exist') ||
+        errorMessage.includes('no documents')) {
+      console.log('ℹ️ Restaurant not found, returning null');
+      return null;
+    }
+    
+    // For other errors (permission, connection, etc.), still throw
+    throw new Error(error instanceof Error ? error.message : 'Failed to get restaurant');
+  }
 };
 
 // Get restaurants owned by user
@@ -192,7 +240,7 @@ export const getOwnerRestaurants = async (ownerId: string): Promise<Restaurant[]
     // Mock implementation
     await new Promise(resolve => setTimeout(resolve, 500));
     const restaurants = mockRestaurants.filter(r => r.ownerId === ownerId);
-    console.log('✅ Retrieved owner restaurants:', restaurants.length);
+    console.log('✅ Retrieved owner restaurants (MOCK MODE):', restaurants.length);
     return restaurants;
   }
 
@@ -222,10 +270,25 @@ export const getOwnerRestaurants = async (ownerId: string): Promise<Restaurant[]
       } as Restaurant);
     });
 
-    console.log('✅ Retrieved owner restaurants:', restaurants.length);
+    console.log('✅ Retrieved owner restaurants (FIREBASE MODE):', restaurants.length);
     return restaurants;
   } catch (error: unknown) {
     console.error('❌ Get owner restaurants error:', error);
+    
+    // Check if this is likely due to empty collection or missing data
+    const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    
+    if (errorMessage.includes('not found') || 
+        errorMessage.includes('missing') || 
+        errorMessage.includes('does not exist') ||
+        errorMessage.includes('no documents') ||
+        errorMessage.includes('collection') ||
+        errorMessage.includes('index') && errorMessage.includes('build')) {
+      console.log('ℹ️ No restaurants found for owner or collection is empty, returning empty array');
+      return [];
+    }
+    
+    // For other errors (permission, connection, etc.), still throw
     throw new Error(error instanceof Error ? error.message : 'Failed to get restaurants');
   }
 };

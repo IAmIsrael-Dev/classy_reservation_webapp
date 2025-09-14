@@ -1,21 +1,25 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { Restaurant } from '../types/restaurant';
 import type { Table } from '../types/table';
 import type { User } from '../types/user';
+import { getCurrentUser } from '../services/auth';
+import { getOwnerRestaurants } from '../services/restaurant';
+import { getDataMode } from '../firebaseClient';
 
 // Using imported types instead of local interfaces
 
 interface RestaurantContextType {
   restaurant: Restaurant | null;
-  setRestaurant: (restaurant: Restaurant) => void;
+  setRestaurant: (restaurant: Restaurant | null) => void;
   tables: Table[];
   setTables: (tables: Table[]) => void;
   staff: User[];
   setStaff: (staff: User[]) => void;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
+  loadRestaurantData: () => Promise<void>;
 }
 
 const RestaurantContext = createContext<RestaurantContextType | undefined>(undefined);
@@ -33,51 +37,7 @@ interface RestaurantProviderProps {
 }
 
 export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children }) => {
-  const [restaurant, setRestaurant] = useState<Restaurant | null>({
-    id: '1',
-    name: 'Bella Vista',
-    address: '123 Main Street, Downtown',
-    phone: '(555) 123-4567',
-    email: 'info@bellavista.com',
-    cuisine: 'Italian',
-    description: 'Authentic Italian dining experience with a modern twist',
-    imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop',
-    imageUrls: [
-      'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?w=800&h=600&fit=crop'
-    ],
-    rating: 4.5,
-    reviewCount: 127,
-    priceRange: '$',
-    website: 'https://www.bellavista.com',
-    distance: '0.5 miles',
-    waitTime: '15-25 min',
-    isOpen: true,
-    isFavorite: false,
-    hasDeals: true,
-    isTrending: true,
-    isNew: false,
-    amenities: ['Outdoor Seating', 'Full Bar', 'Parking Available', 'WiFi Available'],
-    hours: {
-      'Monday': '5:00 PM - 11:00 PM',
-      'Tuesday': '5:00 PM - 11:00 PM',
-      'Wednesday': '5:00 PM - 11:00 PM',
-      'Thursday': '5:00 PM - 11:00 PM',
-      'Friday': '5:00 PM - 12:00 AM',
-      'Saturday': '5:00 PM - 12:00 AM',
-      'Sunday': '5:00 PM - 10:00 PM'
-    },
-    latitude: 40.7589,
-    longitude: -73.9851,
-    specialOffers: ['Happy Hour 5-7 PM', '20% off wine bottles on Wednesdays'],
-    menuHighlights: {
-      'Signature Dishes': ['Truffle Risotto', 'Osso Buco', 'Tiramisu'],
-      'Popular Items': ['Margherita Pizza', 'Caesar Salad', 'Panna Cotta']
-    },
-    ownerId: 'owner-123',
-    createdAt: new Date('2023-01-15'),
-    updatedAt: new Date('2024-01-15')
-  });
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
 
   const [tables, setTables] = useState<Table[]>([
     { 
@@ -184,6 +144,130 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
 
   const [isLoading, setIsLoading] = useState(false);
 
+  // Load restaurant data based on authenticated user and data mode
+  const loadRestaurantData = async () => {
+    try {
+      setIsLoading(true);
+      const currentDataMode = getDataMode();
+      
+      console.log(`🔄 Loading restaurant data in ${currentDataMode.toUpperCase()} mode`);
+      
+      if (currentDataMode === 'mock') {
+        // Load mock data
+        const mockRestaurant = {
+          id: 'mock-restaurant-1',
+          name: 'Bella Vista',
+          address: '123 Main Street, Downtown',
+          phone: '(555) 123-4567',
+          email: 'info@bellavista.com',
+          cuisine: 'Italian',
+          description: 'Authentic Italian dining experience with a modern twist',
+          imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop',
+          imageUrls: [
+            'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop',
+            'https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?w=800&h=600&fit=crop'
+          ],
+          rating: 4.5,
+          reviewCount: 127,
+          priceRange: '$$$',
+          website: 'https://www.bellavista.com',
+          distance: '0.5 miles',
+          waitTime: '15-25 min',
+          isOpen: true,
+          isFavorite: false,
+          hasDeals: true,
+          isTrending: true,
+          isNew: false,
+          amenities: ['Outdoor Seating', 'Full Bar', 'Parking Available', 'WiFi Available'],
+          hours: {
+            'Monday': '5:00 PM - 11:00 PM',
+            'Tuesday': '5:00 PM - 11:00 PM',
+            'Wednesday': '5:00 PM - 11:00 PM',
+            'Thursday': '5:00 PM - 11:00 PM',
+            'Friday': '5:00 PM - 12:00 AM',
+            'Saturday': '5:00 PM - 12:00 AM',
+            'Sunday': '5:00 PM - 10:00 PM'
+          },
+          latitude: 40.7589,
+          longitude: -73.9851,
+          specialOffers: ['Happy Hour 5-7 PM', '20% off wine bottles on Wednesdays'],
+          menuHighlights: {
+            'Signature Dishes': ['Truffle Risotto', 'Osso Buco', 'Tiramisu'],
+            'Popular Items': ['Margherita Pizza', 'Caesar Salad', 'Panna Cotta']
+          },
+          ownerId: 'owner-123',
+          createdAt: new Date('2023-01-15'),
+          updatedAt: new Date('2024-01-15')
+        };
+        
+        // Simulate loading delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setRestaurant(mockRestaurant);
+        console.log('✅ Mock restaurant data loaded successfully');
+        return;
+      }
+      
+      // Firebase mode - load real data
+      const currentUser = await getCurrentUser();
+      
+      if (currentUser) {
+        // If user has a restaurantId, get that specific restaurant
+        if (currentUser.restaurantId) {
+          const { getRestaurant } = await import('../services/restaurant');
+          const userRestaurant = await getRestaurant(currentUser.restaurantId);
+          if (userRestaurant) {
+            setRestaurant(userRestaurant);
+            console.log('✅ Firebase restaurant data loaded successfully');
+            return;
+          }
+        }
+        
+        // If user is an owner, get their restaurants
+        if (currentUser.role === 'owner') {
+          const restaurants = await getOwnerRestaurants(currentUser.id);
+          if (restaurants.length > 0) {
+            setRestaurant(restaurants[0]); // Set first restaurant as default
+            console.log('✅ Firebase owner restaurant data loaded successfully');
+            return;
+          }
+        }
+      }
+      
+      // No restaurant found
+      setRestaurant(null);
+      console.log('ℹ️ No restaurant data found');
+      
+    } catch (error) {
+      console.error('❌ Failed to load restaurant data:', error);
+      setRestaurant(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load restaurant data on mount and when data mode changes
+  useEffect(() => {
+    loadRestaurantData();
+  }, []);
+
+  // Listen for data mode changes and reload data
+  useEffect(() => {
+    const handleDataModeChange = () => {
+      loadRestaurantData();
+    };
+
+    // Listen for storage changes to detect data mode changes
+    window.addEventListener('storage', handleDataModeChange);
+    
+    // Custom event for data mode changes
+    window.addEventListener('datamode-changed', handleDataModeChange);
+
+    return () => {
+      window.removeEventListener('storage', handleDataModeChange);
+      window.removeEventListener('datamode-changed', handleDataModeChange);
+    };
+  }, []);
+
   const value: RestaurantContextType = {
     restaurant,
     setRestaurant,
@@ -193,6 +277,7 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
     setStaff,
     isLoading,
     setIsLoading,
+    loadRestaurantData,
   };
 
   return (

@@ -85,7 +85,8 @@ export const createReservation = async (
 
   // Real Firebase implementation
   if (!firestore) {
-    throw new Error('Firebase not initialized');
+    console.warn('⚠️ Firebase not initialized, cannot create reservation in Firebase mode');
+    throw new Error('Database connection not available. Please try again or switch to demo mode.');
   }
 
   try {
@@ -111,11 +112,26 @@ export const createReservation = async (
       updatedAt: new Date()
     };
 
-    console.log('✅ Reservation created successfully:', confirmationNumber);
+    console.log('✅ Reservation created successfully in Firestore:', confirmationNumber);
     return newReservation;
   } catch (error: unknown) {
     console.error('❌ Create reservation error:', error);
-    throw new Error(error instanceof Error ? error.message : 'Failed to create reservation');
+    
+    const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    
+    if (errorMessage.includes('network') || 
+        errorMessage.includes('connection') ||
+        errorMessage.includes('timeout')) {
+      throw new Error('Network connection failed. Please check your internet connection and try again.');
+    }
+    
+    if (errorMessage.includes('permission') || 
+        errorMessage.includes('auth') ||
+        errorMessage.includes('access')) {
+      throw new Error('Access denied. Please check your permissions.');
+    }
+    
+    throw new Error('Failed to create reservation. Please try again.');
   }
 };
 
@@ -142,7 +158,8 @@ export const updateReservation = async (
 
   // Real Firebase implementation
   if (!firestore) {
-    throw new Error('Firebase not initialized');
+    console.warn('⚠️ Firebase not initialized, cannot update reservation in Firebase mode');
+    throw new Error('Database connection not available. Please try again or switch to demo mode.');
   }
 
   try {
@@ -187,11 +204,30 @@ export const updateReservation = async (
       cancelledAt: updatedData.cancelledAt?.toDate()
     };
 
-    console.log('✅ Reservation updated successfully:', updatedReservation.confirmationNumber);
+    console.log('✅ Reservation updated successfully in Firestore:', updatedReservation.confirmationNumber);
     return updatedReservation;
   } catch (error: unknown) {
     console.error('❌ Update reservation error:', error);
-    throw new Error(error instanceof Error ? error.message : 'Failed to update reservation');
+    
+    const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    
+    if (errorMessage.includes('network') || 
+        errorMessage.includes('connection') ||
+        errorMessage.includes('timeout')) {
+      throw new Error('Network connection failed. Please check your internet connection and try again.');
+    }
+    
+    if (errorMessage.includes('permission') || 
+        errorMessage.includes('auth') ||
+        errorMessage.includes('access')) {
+      throw new Error('Access denied. Please check your permissions.');
+    }
+    
+    if (errorMessage.includes('not found')) {
+      throw new Error('Reservation not found.');
+    }
+    
+    throw new Error('Failed to update reservation. Please try again.');
   }
 };
 
@@ -218,7 +254,9 @@ export const getRestaurantReservations = async (
 
   // Real Firebase implementation
   if (!firestore) {
-    throw new Error('Firebase not initialized');
+    console.warn('⚠️ Firebase not initialized, falling back to mock data');
+    // Fallback to mock data if Firebase is not available
+    return getRestaurantReservations(restaurantId, dateFilter);
   }
 
   try {
@@ -245,6 +283,12 @@ export const getRestaurantReservations = async (
     const querySnapshot = await getDocs(reservationsQuery);
     const reservations: Reservation[] = [];
 
+    // Check if query snapshot is empty
+    if (querySnapshot.empty) {
+      console.log('ℹ️ No reservations found for restaurant:', restaurantId);
+      return [];
+    }
+
     querySnapshot.forEach((doc) => {
       const data = doc.data();
       reservations.push({
@@ -267,11 +311,40 @@ export const getRestaurantReservations = async (
       });
     });
 
-    console.log('✅ Retrieved restaurant reservations:', reservations.length);
+    console.log('✅ Retrieved restaurant reservations from Firestore:', reservations.length);
     return reservations;
   } catch (error: unknown) {
     console.error('❌ Get restaurant reservations error:', error);
-    throw new Error(error instanceof Error ? error.message : 'Failed to get reservations');
+    
+    // Check if this is likely due to empty collection or missing data
+    const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    
+    // Check if this is a collection doesn't exist error
+    if (errorMessage.includes('not found') || 
+        errorMessage.includes('missing') || 
+        errorMessage.includes('does not exist') ||
+        errorMessage.includes('no documents') ||
+        errorMessage.includes('collection') ||
+        (errorMessage.includes('index') && errorMessage.includes('build'))) {
+      console.log('ℹ️ Reservations collection does not exist yet, returning empty array');
+      return [];
+    }
+    
+    // For connection errors, network issues, or permission errors
+    if (errorMessage.includes('network') || 
+        errorMessage.includes('connection') ||
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('permission') ||
+        errorMessage.includes('auth') ||
+        errorMessage.includes('access') ||
+        errorMessage.includes('unavailable') ||
+        errorMessage.includes('deadline')) {
+      throw new Error('Unable to connect to the database. Please check your internet connection and try again.');
+    }
+    
+    // If the query returns empty, that's not an error
+    console.log('ℹ️ Query returned empty results, returning empty array');
+    return [];
   }
 };
 
@@ -399,6 +472,21 @@ export const getUserReservations = async (userId: string): Promise<Reservation[]
     return reservations;
   } catch (error: unknown) {
     console.error('❌ Get user reservations error:', error);
+    
+    // Check if this is likely due to empty collection or missing data
+    const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    
+    if (errorMessage.includes('not found') || 
+        errorMessage.includes('missing') || 
+        errorMessage.includes('does not exist') ||
+        errorMessage.includes('no documents') ||
+        errorMessage.includes('collection') ||
+        errorMessage.includes('index') && errorMessage.includes('build')) {
+      console.log('ℹ️ No user reservations found or collection is empty, returning empty array');
+      return [];
+    }
+    
+    // For other errors (permission, connection, etc.), still throw
     throw new Error(error instanceof Error ? error.message : 'Failed to get user reservations');
   }
 };

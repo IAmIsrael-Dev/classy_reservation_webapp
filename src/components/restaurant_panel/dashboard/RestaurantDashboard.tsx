@@ -7,10 +7,12 @@ import { Badge } from '../../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../ui/dialog';
 import { Alert, AlertDescription } from '../../ui/alert';
+import { Toaster } from '../../ui/sooner';
 import { useRole } from '../context/RoleContext';
 import { useRestaurant } from '../context/RestaurantContext';
 import type { Restaurant } from '../types/restaurant';
 import { ContextualDashboard } from './ContextualDashboard';
+import { DataModeToggle } from '../components/DataModeToggle';
 import { ReservationsAndWaitlist } from '../features/ReservationAndWaitlist';
 import { FloorPlanManager } from '../features/FloorPlanManager';
 import { HostCheckin } from '../features/HostCheckin';
@@ -107,10 +109,11 @@ const NotificationsAlerts = () => (
 
 export function RestaurantDashboard({ onLogout, onBackToDashboard }: RestaurantDashboardProps) {
   const { currentRole, setCurrentRole, permissions } = useRole();
-  const { restaurant, setRestaurant, staff } = useRestaurant();
+  const { restaurant, setRestaurant, staff, loadRestaurantData } = useRestaurant();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showLegacyDialog, setShowLegacyDialog] = useState(false);
   const [selectedLegacyPanel, setSelectedLegacyPanel] = useState<string>('');
+  const [showDataModeToggle, setShowDataModeToggle] = useState(false);
 
   const availableTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
@@ -172,6 +175,12 @@ export function RestaurantDashboard({ onLogout, onBackToDashboard }: RestaurantD
     setActiveTab('dashboard');
   };
 
+  const handleDataModeChange = async (mode: 'mock' | 'firebase') => {
+    console.log(`🔄 Data mode changed to: ${mode}`);
+    // Reload restaurant data when mode changes
+    await loadRestaurantData();
+  };
+
   // Get current user based on role
   const getCurrentUser = () => {
     return staff.find(user => user.role === currentRole) || staff[0];
@@ -185,6 +194,7 @@ export function RestaurantDashboard({ onLogout, onBackToDashboard }: RestaurantD
 
   return (
     <div className="dark">
+      <Toaster />
       <div className="min-h-screen bg-background text-foreground">
         {/* Header */}
         <div className="border-b border-border bg-card">
@@ -228,12 +238,26 @@ export function RestaurantDashboard({ onLogout, onBackToDashboard }: RestaurantD
               <Button onClick={onLogout} variant="outline" size="sm">
                 Logout
               </Button>
+              <Button 
+                onClick={() => setShowDataModeToggle(!showDataModeToggle)} 
+                variant="outline" 
+                size="sm"
+              >
+                Data Mode
+              </Button>
               <Button onClick={onBackToDashboard} variant="outline" size="sm">
                 ← Dashboard
               </Button>
             </div>
           </div>
         </div>
+
+        {/* Data Mode Toggle */}
+        {showDataModeToggle && (
+          <div className="px-6 py-4">
+            <DataModeToggle onModeChange={handleDataModeChange} />
+          </div>
+        )}
 
         {/* Navigation */}
         <div className="px-6 py-4">
@@ -289,7 +313,7 @@ export function RestaurantDashboard({ onLogout, onBackToDashboard }: RestaurantD
         {/* Main Content */}
         <div className="px-6 pb-6">
           {activeTab === 'dashboard' && <ContextualDashboard />}
-          {activeTab === 'reservations' && restaurant?.id && <ReservationsAndWaitlist restaurantId={restaurant.id} />}
+          {activeTab === 'reservations' && <ReservationsAndWaitlist restaurantId={restaurant?.id || ''} />}
           {activeTab === 'floor-plan' && <FloorPlanManager />}
           {activeTab === 'host-checkin' && <HostCheckin />}
           {activeTab === 'server-view' && <ServerView />}

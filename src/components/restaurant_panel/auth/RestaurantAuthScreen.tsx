@@ -1,3 +1,4 @@
+ 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
@@ -13,10 +14,10 @@ import {
   Shield,
   Users,
   Crown,
-  ChefHat,
-  UserPlus
-} from 'lucide-react';
+  ChefHat} from 'lucide-react';
 import type { UserRole, CreateUserData } from '../types/user';
+import { OwnerRegistrationWizard } from './OwnerRegistrationWizard';
+import type { RegistrationData } from './types';
 
 interface RestaurantAuthScreenProps {
   email: string;
@@ -31,6 +32,7 @@ interface RestaurantAuthScreenProps {
   onAuthModeChange: (mode: 'login' | 'signup') => void;
   onLogin: (e: React.FormEvent) => void;
   onSignup: (userData: CreateUserData, password: string) => void;
+  onOwnerRegistration: (data: RegistrationData) => Promise<void>;
   onBackToDashboard: () => void;
 }
 
@@ -87,39 +89,36 @@ export const RestaurantAuthScreen: React.FC<RestaurantAuthScreenProps> = ({
   onRoleChange,
   onAuthModeChange,
   onLogin,
-  onSignup,
+  onOwnerRegistration,
   onBackToDashboard
 }) => {
   const [showPassword, setShowPassword] = useState(false);
-  const [signupData, setSignupData] = useState({
-    name: '',
-    phoneNumber: '',
-    confirmPassword: '',
-    restaurantId: ''
-  });
+  const [showOwnerRegistration, setShowOwnerRegistration] = useState(false);
+  // const [signupData] = useState({
+  //   name: '',
+  //   phoneNumber: '',
+  //   confirmPassword: '',
+  //   restaurantId: ''
+  // });
 
-  const handleSignupSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (password !== signupData.confirmPassword) {
-      return;
-    }
-
-    const userData: CreateUserData = {
-      email,
-      name: signupData.name,
-      phoneNumber: signupData.phoneNumber || undefined,
-      role,
-      restaurantId: role === 'owner' ? undefined : signupData.restaurantId || undefined
-    };
-
-    onSignup(userData, password);
-  };
 
   // safe label for Sign In button (roleConfig covers all UserRole keys now)
   const selectedLabel = roleConfig[role].label;
 
-  const roleKeys = Object.keys(roleConfig) as UserRole[];
+  // Only show staff roles for login, no customer role in restaurant panel
+  const staffRoles: UserRole[] = ['owner', 'manager', 'host', 'server'];
+  
+  // Handle owner registration wizard
+  if (showOwnerRegistration) {
+    return (
+      <OwnerRegistrationWizard
+        isLoading={isLoading}
+        error={error}
+        onSubmit={onOwnerRegistration}
+        onBack={() => setShowOwnerRegistration(false)}
+      />
+    );
+  }
 
   return (
     <div className="dark">
@@ -170,78 +169,62 @@ export const RestaurantAuthScreen: React.FC<RestaurantAuthScreenProps> = ({
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                Sign In
+                Staff Sign In
               </button>
               <button
-                onClick={() => onAuthModeChange('signup')}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                  authMode === 'signup'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+                onClick={() => setShowOwnerRegistration(true)}
+                className="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
               >
-                Sign Up
+                Owner Registration
               </button>
             </div>
 
-            {/* Role Selection */}
+            {/* Role Selection - Only for Login */}
+            {authMode === 'login' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Select Your Role</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-3">
+                    {staffRoles.map((key) => {
+                      const config = roleConfig[key];
+                      const Icon = config.icon;
+                      const isSelected = role === key;
+
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => onRoleChange(key)}
+                          className={`p-4 rounded-lg border-2 transition-all duration-200 text-left ${
+                            isSelected
+                              ? 'border-primary bg-primary/5 shadow-md'
+                              : 'border-border hover:border-primary/50 hover:bg-accent/50'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3 mb-2">
+                            <Icon className={`w-5 h-5 ${isSelected ? 'text-primary' : config.color}`} />
+                            <span className={`font-medium ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                              {config.label}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground leading-relaxed">{config.description}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Auth Form - Only Login */}
             <Card>
               <CardHeader>
-                <CardTitle>Select Your Role</CardTitle>
+                <CardTitle>Staff Sign In</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-3">
-                  {roleKeys.map((key) => {
-                    const config = roleConfig[key];
-                    const Icon = config.icon;
-                    const isSelected = role === key;
+                <form onSubmit={onLogin} className="space-y-4">
 
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => onRoleChange(key)}
-                        className={`p-4 rounded-lg border-2 transition-all duration-200 text-left ${
-                          isSelected
-                            ? 'border-primary bg-primary/5 shadow-md'
-                            : 'border-border hover:border-primary/50 hover:bg-accent/50'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-3 mb-2">
-                          <Icon className={`w-5 h-5 ${isSelected ? 'text-primary' : config.color}`} />
-                          <span className={`font-medium ${isSelected ? 'text-primary' : 'text-foreground'}`}>
-                            {config.label}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed">{config.description}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Auth Form */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{authMode === 'login' ? 'Sign In' : 'Create Account'}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={authMode === 'login' ? onLogin : handleSignupSubmit} className="space-y-4">
-                  {/* Name field for signup */}
-                  {authMode === 'signup' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
-                      <Input
-                        id="name"
-                        type="text"
-                        value={signupData.name}
-                        onChange={(e) => setSignupData((prev) => ({ ...prev, name: e.target.value }))}
-                        placeholder="Enter your full name"
-                        required
-                        className="h-12"
-                      />
-                    </div>
-                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Address</Label>
@@ -256,37 +239,7 @@ export const RestaurantAuthScreen: React.FC<RestaurantAuthScreenProps> = ({
                     />
                   </div>
 
-                  {/* Phone number for signup */}
-                  {authMode === 'signup' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number (Optional)</Label>
-                      <Input
-                        id="phone"
-                        type="tel"
-                        value={signupData.phoneNumber}
-                        onChange={(e) => setSignupData((prev) => ({ ...prev, phoneNumber: e.target.value }))}
-                        placeholder="Enter your phone number"
-                        className="h-12"
-                      />
-                    </div>
-                  )}
 
-                  {/* Restaurant ID for staff members in signup */}
-                  {authMode === 'signup' && role !== 'owner' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="restaurantId">Restaurant ID</Label>
-                      <Input
-                        id="restaurantId"
-                        type="text"
-                        value={signupData.restaurantId}
-                        onChange={(e) => setSignupData((prev) => ({ ...prev, restaurantId: e.target.value }))}
-                        placeholder="Enter restaurant ID"
-                        required
-                        className="h-12"
-                      />
-                      <p className="text-xs text-muted-foreground">Get this ID from your restaurant owner or manager</p>
-                    </div>
-                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
@@ -296,7 +249,7 @@ export const RestaurantAuthScreen: React.FC<RestaurantAuthScreenProps> = ({
                         type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={(e) => onPasswordChange(e.target.value)}
-                        placeholder={authMode === 'login' ? 'Enter your password' : 'Create a password'}
+                        placeholder="Enter your password"
                         required
                         className="h-12 pr-12"
                         minLength={6}
@@ -311,24 +264,7 @@ export const RestaurantAuthScreen: React.FC<RestaurantAuthScreenProps> = ({
                     </div>
                   </div>
 
-                  {/* Confirm password for signup */}
-                  {authMode === 'signup' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm Password</Label>
-                      <Input
-                        id="confirmPassword"
-                        type="password"
-                        value={signupData.confirmPassword}
-                        onChange={(e) => setSignupData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                        placeholder="Confirm your password"
-                        required
-                        className="h-12"
-                      />
-                      {password && signupData.confirmPassword && password !== signupData.confirmPassword && (
-                        <p className="text-xs text-destructive">Passwords do not match</p>
-                      )}
-                    </div>
-                  )}
+
 
                   {error && (
                     <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
@@ -339,26 +275,17 @@ export const RestaurantAuthScreen: React.FC<RestaurantAuthScreenProps> = ({
                   <Button
                     type="submit"
                     className="w-full h-12"
-                    disabled={isLoading || (authMode === 'signup' && password !== signupData.confirmPassword)}
+                    disabled={isLoading}
                   >
                     {isLoading ? (
                       <div className="flex items-center space-x-2">
                         <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        <span>{authMode === 'login' ? 'Signing in...' : 'Creating account...'}</span>
+                        <span>Signing in...</span>
                       </div>
                     ) : (
                       <div className="flex items-center space-x-2">
-                        {authMode === 'login' ? (
-                          <>
-                            <LogIn className="w-4 h-4" />
-                            <span>Sign In as {selectedLabel}</span>
-                          </>
-                        ) : (
-                          <>
-                            <UserPlus className="w-4 h-4" />
-                            <span>Create Account</span>
-                          </>
-                        )}
+                        <LogIn className="w-4 h-4" />
+                        <span>Sign In as {selectedLabel}</span>
                       </div>
                     )}
                   </Button>
@@ -367,32 +294,32 @@ export const RestaurantAuthScreen: React.FC<RestaurantAuthScreenProps> = ({
             </Card>
 
             {/* Demo Information for Login */}
-            {authMode === 'login' && (
-              <Card className="bg-muted/30">
-                <CardContent className="p-4">
-                  <div className="space-y-2">
-                    <h4 className="font-medium">Demo Credentials</h4>
-                    <div className="space-y-1 text-sm text-muted-foreground">
-                      <p>
-                        <strong>Owner:</strong> owner@restaurant.com / owner123
-                      </p>
-                      <p>
-                        <strong>Manager:</strong> manager@restaurant.com / manager123
-                      </p>
-                      <p>
-                        <strong>Host:</strong> host@restaurant.com / host123
-                      </p>
-                      <p>
-                        <strong>Server:</strong> server@restaurant.com / server123
-                      </p>
-                      <p>
-                        <strong>Customer:</strong> customer@restaurant.com / customer123
-                      </p>
-                    </div>
+            <Card className="bg-muted/30">
+              <CardContent className="p-4">
+                <div className="space-y-2">
+                  <h4 className="font-medium">Demo Credentials</h4>
+                  <div className="space-y-1 text-sm text-muted-foreground">
+                    <p>
+                      <strong>Owner:</strong> owner@restaurant.com / owner123
+                    </p>
+                    <p>
+                      <strong>Manager:</strong> manager@restaurant.com / manager123
+                    </p>
+                    <p>
+                      <strong>Host:</strong> host@restaurant.com / host123
+                    </p>
+                    <p>
+                      <strong>Server:</strong> server@restaurant.com / server123
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                  <div className="pt-2 border-t border-border/50 mt-3">
+                    <p className="text-xs text-muted-foreground">
+                      <strong>New to restaurant management?</strong> Click "Owner Registration" to create your restaurant and account.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

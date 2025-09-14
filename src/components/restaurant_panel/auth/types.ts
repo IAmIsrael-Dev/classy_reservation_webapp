@@ -15,6 +15,7 @@ export interface RegistrationData {
   state: string;
   zipCode: string;
   description: string;
+  restaurantImage?: File;
   
   // Business details
   businessLicense?: string;

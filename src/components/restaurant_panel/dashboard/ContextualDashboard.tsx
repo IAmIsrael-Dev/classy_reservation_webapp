@@ -9,9 +9,11 @@ import {
   TrendingUp,
   Clock,
   Store,
-  Plus,
   Settings,
   Edit,
+  Database,
+  Cloud,
+  AlertCircle,
 } from 'lucide-react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useRole } from '../context/RoleContext';
@@ -20,8 +22,8 @@ import type { Table } from '../types/table';
 import type { Restaurant } from '../types/restaurant';
 import { getTodaysReservations } from '../services/reservation';
 import { getRestaurantTables } from '../services/table';
-import { RestaurantForm } from '../components/RestaurantForm';
 import { RestaurantSettings } from '../features/RestaurantSettings';
+import { getDataMode, isFirebaseConfigured } from '../firebaseClient';
 
 export const ContextualDashboard: React.FC = () => {
   const { restaurant, isLoading: contextLoading } = useRestaurant();
@@ -29,13 +31,16 @@ export const ContextualDashboard: React.FC = () => {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showRestaurantForm, setShowRestaurantForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [currentDataMode, setCurrentDataMode] = useState(() => getDataMode());
 
   // Load restaurant-specific data
   useEffect(() => {
     const loadRestaurantData = async () => {
-      if (!restaurant?.id) return;
+      if (!restaurant?.id) {
+        setIsLoading(false);
+        return;
+      }
 
       try {
         setIsLoading(true);
@@ -48,6 +53,9 @@ export const ContextualDashboard: React.FC = () => {
         setTables(restaurantTables);
       } catch (error) {
         console.error('Failed to load restaurant data:', error);
+        // Set empty arrays on error to show empty states
+        setReservations([]);
+        setTables([]);
       } finally {
         setIsLoading(false);
       }
@@ -56,7 +64,23 @@ export const ContextualDashboard: React.FC = () => {
     if (!contextLoading) {
       loadRestaurantData();
     }
-  }, [restaurant, contextLoading]);
+  }, [restaurant, contextLoading, currentDataMode]);
+
+  // Listen for data mode changes
+  useEffect(() => {
+    const handleDataModeChange = () => {
+      const newMode = getDataMode();
+      setCurrentDataMode(newMode);
+    };
+
+    window.addEventListener('datamode-changed', handleDataModeChange);
+    window.addEventListener('storage', handleDataModeChange);
+
+    return () => {
+      window.removeEventListener('datamode-changed', handleDataModeChange);
+      window.removeEventListener('storage', handleDataModeChange);
+    };
+  }, []);
 
   // Calculate basic analytics
   const analytics = React.useMemo(() => {
@@ -86,20 +110,83 @@ export const ContextualDashboard: React.FC = () => {
   }
 
   if (!restaurant) {
+    const isFirebaseMode = currentDataMode === 'firebase';
+    const isFirebaseAvailable = isFirebaseConfigured();
+
     return (
       <Card>
         <CardContent className="p-12 text-center">
-          <Store className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="font-medium mb-2">No Restaurant Selected</h3>
-          <p className="text-muted-foreground mb-4">
-            Please select or create a restaurant to view the dashboard.
-          </p>
-          {permissions.canManageSettings && (
-            <Button onClick={() => setShowRestaurantForm(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Restaurant
-            </Button>
-          )}
+          <div className="space-y-4">
+            <div className="flex items-center justify-center space-x-2 mb-4">
+              {isFirebaseMode ? (
+                <Cloud className="w-12 h-12 text-blue-500" />
+              ) : (
+                <Database className="w-12 h-12 text-green-500" />
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <h3 className="font-medium">
+                {isFirebaseMode ? 'No Restaurant Data in Firebase' : 'No Restaurant Found'}
+              </h3>
+              
+              {isFirebaseMode ? (
+                <div className="space-y-3">
+                  <p className="text-muted-foreground">
+                    No restaurant data found in Firebase Firestore for your account.
+                  </p>
+                  {isFirebaseAvailable ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        • Create a restaurant through the owner registration process
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        • Or switch to Mock Data mode to see demo content
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950 rounded-lg p-4 mt-4">
+                      <div className="flex items-start space-x-2">
+                        <AlertCircle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm text-orange-700 dark:text-orange-300">
+                          <p className="font-medium">Firebase not configured</p>
+                          <p>Add Firebase environment variables to enable real data storage.</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-muted-foreground">
+                    Demo restaurant data should be available in Mock Data mode.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    If you're seeing this message, there may be an issue with the mock data loading.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 p-4 bg-muted rounded-lg">
+              <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
+                {isFirebaseMode ? (
+                  <>
+                    <Cloud className="w-4 h-4" />
+                    <span>Firebase Mode Active</span>
+                  </>
+                ) : (
+                  <>
+                    <Database className="w-4 h-4" />
+                    <span>Mock Data Mode Active</span>
+                  </>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Use the "Data Mode" button in the header to switch between modes
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
@@ -124,6 +211,23 @@ export const ContextualDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Data Mode Indicator */}
+      <div className="flex items-center justify-center">
+        <div className="flex items-center space-x-2 px-3 py-1 bg-muted rounded-full text-xs text-muted-foreground">
+          {currentDataMode === 'firebase' ? (
+            <>
+              <Cloud className="w-3 h-3" />
+              <span>Firebase Mode - Real Data</span>
+            </>
+          ) : (
+            <>
+              <Database className="w-3 h-3" />
+              <span>Mock Data Mode - Demo Content</span>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
@@ -193,17 +297,7 @@ export const ContextualDashboard: React.FC = () => {
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {permissions.canManageSettings && (
-              <Button 
-                className="h-16 flex-col"
-                onClick={() => setShowRestaurantForm(true)}
-              >
-                <Plus className="w-5 h-5 mb-2" />
-                Add Restaurant
-              </Button>
-            )}
-            
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {permissions.canManageReservations && (
               <>
                 <Button 
@@ -236,11 +330,11 @@ export const ContextualDashboard: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Current Restaurant Info */}
+      {/* Restaurant Profile Information */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            Current Restaurant
+            Restaurant Profile
             {permissions.canManageSettings && (
               <Button 
                 size="sm" 
@@ -248,45 +342,122 @@ export const ContextualDashboard: React.FC = () => {
                 onClick={() => setShowSettings(true)}
               >
                 <Edit className="w-4 h-4 mr-2" />
-                Edit
+                Edit Profile
               </Button>
             )}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <h3 className="font-semibold text-lg">{restaurant.name}</h3>
-              <p className="text-muted-foreground">{restaurant.description}</p>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">{restaurant.cuisine}</Badge>
-                <Badge variant="default">Open</Badge>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Restaurant Image */}
+            {restaurant.imageUrl && (
+              <div className="lg:col-span-1">
+                <div className="aspect-video rounded-lg overflow-hidden bg-muted">
+                  <img 
+                    src={restaurant.imageUrl} 
+                    alt={restaurant.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               </div>
-            </div>
-            <div className="space-y-2 text-sm">
-              <div><strong>Address:</strong> {restaurant.address}</div>
-              <div><strong>Phone:</strong> {restaurant.phone}</div>
-              <div><strong>Email:</strong> {restaurant.email}</div>
+            )}
+            
+            {/* Basic Information */}
+            <div className={`space-y-4 ${restaurant.imageUrl ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
+              <div className="space-y-3">
+                <h3 className="font-semibold text-xl">{restaurant.name}</h3>
+                <p className="text-muted-foreground">{restaurant.description}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="secondary">{restaurant.cuisine}</Badge>
+                  <Badge variant="outline">{restaurant.priceRange}</Badge>
+                  <Badge variant={restaurant.isOpen ? "default" : "destructive"}>
+                    {restaurant.isOpen ? 'Open' : 'Closed'}
+                  </Badge>
+                  {restaurant.hasDeals && <Badge variant="outline">Special Offers</Badge>}
+                  {restaurant.isTrending && <Badge variant="outline">Trending</Badge>}
+                  {restaurant.isNew && <Badge variant="outline">New</Badge>}
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <div className="space-y-2 text-sm">
+                  <div><strong>Address:</strong> {restaurant.address}</div>
+                  <div><strong>Phone:</strong> {restaurant.phone}</div>
+                  <div><strong>Email:</strong> {restaurant.email}</div>
+                  {restaurant.website && (
+                    <div><strong>Website:</strong> 
+                      <a href={restaurant.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-1">
+                        {restaurant.website.replace('https://', '').replace('http://', '')}
+                      </a>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Additional Details */}
+                <div className="space-y-2 text-sm">
+                  {restaurant.rating > 0 && (
+                    <div><strong>Rating:</strong> {restaurant.rating}/5 ({restaurant.reviewCount} reviews)</div>
+                  )}
+                  <div><strong>Wait Time:</strong> {restaurant.waitTime}</div>
+                  {restaurant.amenities && restaurant.amenities.length > 0 && (
+                    <div>
+                      <strong>Amenities:</strong>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {restaurant.amenities.slice(0, 3).map((amenity) => (
+                          <Badge key={amenity} variant="outline" className="text-xs">
+                            {amenity}
+                          </Badge>
+                        ))}
+                        {restaurant.amenities.length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{restaurant.amenities.length - 3} more
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Special Offers */}
+              {restaurant.specialOffers && restaurant.specialOffers.length > 0 && (
+                <div className="pt-2">
+                  <strong className="text-sm">Special Offers:</strong>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {restaurant.specialOffers.map((offer, index) => (
+                      <Badge key={index} variant="outline" className="text-xs bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800">
+                        {offer}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Menu Highlights */}
+              {restaurant.menuHighlights && Object.keys(restaurant.menuHighlights).length > 0 && (
+                <div className="pt-2">
+                  <strong className="text-sm">Menu Highlights:</strong>
+                  <div className="mt-2 space-y-2">
+                    {Object.entries(restaurant.menuHighlights).map(([category, items]) => (
+                      <div key={category} className="text-sm">
+                        <span className="font-medium capitalize">{category.replace('_', ' ')}:</span>
+                        <span className="text-muted-foreground ml-2">{Array.isArray(items) ? items.join(', ') : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Timestamps */}
+              <div className="pt-2 text-xs text-muted-foreground border-t">
+                Created: {restaurant.createdAt.toLocaleDateString()} • 
+                Last Updated: {restaurant.updatedAt.toLocaleDateString()}
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
-
-      {/* Restaurant Form Modal */}
-      {showRestaurantForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-background rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <RestaurantForm 
-              onClose={() => setShowRestaurantForm(false)}
-              onSuccess={() => {
-                setShowRestaurantForm(false);
-                // Refresh data if needed
-              }}
-              userId="current-user" // This should come from auth context
-            />
-          </div>
-        </div>
-      )}
 
       {/* Settings Modal */}
       {showSettings && (

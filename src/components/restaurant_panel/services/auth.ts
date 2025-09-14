@@ -231,21 +231,28 @@ export const hasRole = (user: User | null, requiredRoles: UserRole[]): boolean =
 };
 
 // Auth state listener
-export const onAuthStateChange = (callback: (user: User | null) => void) => {
+export const onAuthStateChange = (callback: (user: User | null) => void): (() => void) => {
   if (isMockMode()) {
     callback(null);
     return () => {};
   }
 
   // Real Firebase implementation
-  if (!auth) {
+  if (!auth || !firestore) {
     callback(null);
     return () => {};
   }
 
-  try {
-    import('firebase/auth').then(({ onAuthStateChanged }) => {
-      return onAuthStateChanged(auth, async (firebaseUser) => {
+  let unsubscribe: (() => void) | null = null;
+
+  const setupListener = async () => {
+    try {
+      const { onAuthStateChanged } = await import('firebase/auth');
+      
+      // We've already checked that auth is not null above
+      const authInstance = auth!;
+      
+      unsubscribe = onAuthStateChanged(authInstance, async (firebaseUser) => {
         if (firebaseUser && firestore) {
           try {
             const { doc, getDoc } = await import('firebase/firestore');
@@ -276,12 +283,83 @@ export const onAuthStateChange = (callback: (user: User | null) => void) => {
           callback(null);
         }
       });
-    });
-  } catch (error) {
-    console.error('❌ Auth state listener error:', error);
-    callback(null);
-    return () => {};
-  }
-  
-  return () => {};
+    } catch (error) {
+      console.error('❌ Auth state listener setup error:', error);
+      callback(null);
+    }
+  };
+
+  setupListener();
+
+  // Return cleanup function
+  return () => {
+    if (unsubscribe) {
+      unsubscribe();
+    }
+  };
 };
+
+// Update user data
+export const updateUser = async (userId: string, updates: Partial<User>): Promise<User> => {
+  if (isMockMode()) {
+    // Mock implementation
+    await new Promise(resolve => setTimeout(resolve, 500));
+    console.log('Mock user update:', { userId, updates });
+    return { ...mockUser, ...updates, id: userId, updatedAt: new Date() };
+  }
+
+  // Real Firebase implementation
+  if (!firestore) {
+    throw new Error('Firebase not initialized');
+  }
+
+  try {
+    const { doc, updateDoc, getDoc } = await import('firebase/firestore');
+    
+    const userRef = doc(firestore, 'users', userId);
+    
+    // Prepare update data
+    const updateData: any = {
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+
+    // Sanitize undefined values
+    const sanitizedUpdate = sanitizeForFirestore(updateData);
+    
+    await updateDoc(userRef, sanitizedUpdate);
+    
+    // Get updated user data
+    const updatedDoc = await getDoc(userRef);
+    if (!updatedDoc.exists()) {
+      throw new Error('User not found');
+    }
+
+    const userData = updatedDoc.data();
+    const updatedUser: User = {
+      id: userId,
+      email: userData.email,
+      name: userData.name,
+      phoneNumber: userData.phoneNumber,
+      role: userData.role,
+      restaurantId: userData.restaurantId,
+      createdAt: new Date(userData.createdAt),
+      updatedAt: new Date(userData.updatedAt),
+      lastLoginAt: userData.lastLoginAt ? new Date(userData.lastLoginAt) : undefined
+    };
+
+    console.log('✅ User updated successfully:', updatedUser.email);
+    return updatedUser;
+  } catch (error: unknown) {
+    console.error('❌ Update user error:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to update user');
+  }
+};
+
+// Debug auth information
+export const debugAuth = () => ({
+  isMockMode: isMockMode(),
+  hasAuth: !!auth,
+  hasFirestore: !!firestore,
+  availableCredentials: Object.keys(mockCredentials)
+});

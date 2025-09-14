@@ -1,31 +1,121 @@
-export const DEMO_CREDENTIALS = {
-  owner: { email: 'owner@bellavista.com', password: 'owner123' },
-  manager: { email: 'manager@bellavista.com', password: 'manager123' },
-  host: { email: 'host@bellavista.com', password: 'host123' },
-  server: { email: 'server@bellavista.com', password: 'server123' }
-};
-
 export const RESTAURANT_TYPES = [
   'Fine Dining',
   'Casual Dining',
   'Fast Casual',
-  'Cafe',
-  'Bistro',
+  'Quick Service',
+  'Coffee Shop',
+  'Bakery',
+  'Pizzeria',
   'Steakhouse',
-  'Italian',
-  'French',
-  'Asian',
-  'Mexican',
   'Seafood',
-  'American',
+  'Italian',
+  'Mexican',
+  'Asian',
+  'Indian',
+  'Thai',
+  'Chinese',
+  'Japanese',
   'Mediterranean',
+  'American',
+  'French',
+  'German',
+  'Spanish',
+  'Bar & Grill',
+  'Sports Bar',
+  'Wine Bar',
+  'Brewery',
+  'Buffet',
+  'Food Truck',
+  'Deli',
+  'Bistro',
+  'Cafe',
   'Other'
 ];
 
 export const US_STATES = [
-  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
-  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
-  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
-  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+  'Alabama',
+  'Alaska',
+  'Arizona',
+  'Arkansas',
+  'California',
+  'Colorado',
+  'Connecticut',
+  'Delaware',
+  'Florida',
+  'Georgia',
+  'Hawaii',
+  'Idaho',
+  'Illinois',
+  'Indiana',
+  'Iowa',
+  'Kansas',
+  'Kentucky',
+  'Louisiana',
+  'Maine',
+  'Maryland',
+  'Massachusetts',
+  'Michigan',
+  'Minnesota',
+  'Mississippi',
+  'Missouri',
+  'Montana',
+  'Nebraska',
+  'Nevada',
+  'New Hampshire',
+  'New Jersey',
+  'New Mexico',
+  'New York',
+  'North Carolina',
+  'North Dakota',
+  'Ohio',
+  'Oklahoma',
+  'Oregon',
+  'Pennsylvania',
+  'Rhode Island',
+  'South Carolina',
+  'South Dakota',
+  'Tennessee',
+  'Texas',
+  'Utah',
+  'Vermont',
+  'Virginia',
+  'Washington',
+  'West Virginia',
+  'Wisconsin',
+  'Wyoming'
 ];
+
+export const BUSINESS_TYPES = [
+  'Sole Proprietorship',
+  'Partnership',
+  'LLC',
+  'Corporation',
+  'Franchise',
+  'Other'
+];
+
+export const SEATING_CAPACITY_RANGES = [
+  { value: '1-25', label: '1-25 seats' },
+  { value: '26-50', label: '26-50 seats' },
+  { value: '51-100', label: '51-100 seats' },
+  { value: '101-200', label: '101-200 seats' },
+  { value: '201-500', label: '201-500 seats' },
+  { value: '500+', label: '500+ seats' }
+];
+
+export const PRICE_RANGES = [
+  { value: '$', label: '$ - Budget friendly' },
+  { value: '$$', label: '$$ - Moderate' },
+  { value: '$$$', label: '$$$ - Upscale' },
+  { value: '$$$$', label: '$$$$ - Fine dining' }
+];
+
+export const DEFAULT_HOURS = {
+  'Monday': '9:00 AM - 10:00 PM',
+  'Tuesday': '9:00 AM - 10:00 PM',
+  'Wednesday': '9:00 AM - 10:00 PM',
+  'Thursday': '9:00 AM - 10:00 PM',
+  'Friday': '9:00 AM - 11:00 PM',
+  'Saturday': '9:00 AM - 11:00 PM',
+  'Sunday': '9:00 AM - 9:00 PM'
+};

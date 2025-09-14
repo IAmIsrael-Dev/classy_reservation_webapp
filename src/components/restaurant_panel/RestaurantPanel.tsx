@@ -4,9 +4,11 @@ import { RestaurantDashboard } from './dashboard/RestaurantDashboard';
 import { RestaurantProvider } from './context/RestaurantContext';
 import { RoleProvider } from './context/RoleContext';
 import type { User, UserRole, CreateUserData } from './types/user';
-import { signInUser, signUpUser, signOutUser, getCurrentUser } from './services/auth';
-import environment from './config/environment';
-console.log(environment.isFirebaseEnabled); // true
+import { signInUser, signUpUser, signOutUser, getCurrentUser, updateUser } from './services/auth';
+import { createRestaurant } from './services/restaurant';
+import { uploadImage } from './services/storage';
+import type { RegistrationData } from './auth/types';
+import type { RestaurantFormData } from './types/restaurant';
 
 
 interface RestaurantPanelProps {
@@ -88,6 +90,81 @@ const RestaurantPanel: React.FC<RestaurantPanelProps> = ({ onBackToDashboard }) 
     }
   };
 
+  // Handle owner registration with restaurant creation
+  const handleOwnerRegistration = async (data: RegistrationData) => {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // Create owner account first
+      const ownerData: CreateUserData = {
+        email: data.email,
+        name: `${data.firstName} ${data.lastName}`,
+        phoneNumber: data.phone,
+        role: 'owner'
+      };
+
+      const newOwner = await signUpUser(data.email, data.password, ownerData);
+
+      // Upload restaurant image if provided
+      let imageUrls: string[] = [];
+      if (data.restaurantImage) {
+        try {
+          const imageUrl = await uploadImage(data.restaurantImage, `restaurants/${newOwner.id}`);
+          imageUrls = [imageUrl];
+        } catch (uploadError) {
+          console.warn('⚠️ Image upload failed, proceeding without image:', uploadError);
+        }
+      }
+
+      // Create restaurant data
+      const restaurantData: RestaurantFormData = {
+        name: data.restaurantName,
+        description: data.description,
+        cuisine: data.restaurantType,
+        address: `${data.address}, ${data.city}, ${data.state} ${data.zipCode}`,
+        phone: data.phone,
+        email: data.email,
+        website: '',
+        priceRange: '$$$',
+        waitTime: '15-25 minutes',
+        isOpen: true,
+        amenities: [],
+        hours: {
+          'Monday': '9:00 AM - 10:00 PM',
+          'Tuesday': '9:00 AM - 10:00 PM',
+          'Wednesday': '9:00 AM - 10:00 PM',
+          'Thursday': '9:00 AM - 10:00 PM',
+          'Friday': '9:00 AM - 11:00 PM',
+          'Saturday': '9:00 AM - 11:00 PM',
+          'Sunday': '9:00 AM - 9:00 PM'
+        },
+        latitude: 0,
+        longitude: 0,
+        specialOffers: [],
+        imageUrls: imageUrls, // Include the uploaded image URLs
+        menuHighlights: {
+          signature_dishes: [],
+          popular_items: []
+        }
+      };
+
+      // Create the restaurant (imageUrls are passed separately to the service)
+      const restaurant = await createRestaurant(restaurantData, imageUrls, newOwner.id);
+      
+      // Update user with restaurant ID in Firebase
+      const updatedOwner = await updateUser(newOwner.id, { restaurantId: restaurant.id });
+
+      setUser(updatedOwner);
+      console.log('✅ Owner registration and restaurant creation successful');
+    } catch (error: unknown) {
+      console.error('❌ Owner registration error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to create account and restaurant');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Handle logout
   const handleLogout = async () => {
     try {
@@ -122,7 +199,7 @@ const RestaurantPanel: React.FC<RestaurantPanelProps> = ({ onBackToDashboard }) 
   // Show dashboard if user is authenticated
   if (user) {
     return (
-      <RestaurantProvider>
+      <RestaurantProvider key={user.id + (user.restaurantId || '')}>
         <RoleProvider initialRole={user.role}>
           <RestaurantDashboard
             onLogout={handleLogout}
@@ -148,6 +225,7 @@ const RestaurantPanel: React.FC<RestaurantPanelProps> = ({ onBackToDashboard }) 
       onAuthModeChange={setAuthMode}
       onLogin={handleLogin}
       onSignup={handleSignup}
+      onOwnerRegistration={handleOwnerRegistration}
       onBackToDashboard={onBackToDashboard}
     />
   );

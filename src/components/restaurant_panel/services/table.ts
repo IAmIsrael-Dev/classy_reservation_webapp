@@ -237,6 +237,21 @@ export const getRestaurantTables = async (restaurantId: string): Promise<Table[]
     return tables;
   } catch (error: unknown) {
     console.error('❌ Get restaurant tables error:', error);
+    
+    // Check if this is likely due to empty collection or missing data
+    const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    
+    if (errorMessage.includes('not found') || 
+        errorMessage.includes('missing') || 
+        errorMessage.includes('does not exist') ||
+        errorMessage.includes('no documents') ||
+        errorMessage.includes('collection') ||
+        errorMessage.includes('index') && errorMessage.includes('build')) {
+      console.log('ℹ️ No tables found for restaurant or collection is empty, returning empty array');
+      return [];
+    }
+    
+    // For other errors (permission, connection, etc.), still throw
     throw new Error(error instanceof Error ? error.message : 'Failed to get restaurant tables');
   }
 };
