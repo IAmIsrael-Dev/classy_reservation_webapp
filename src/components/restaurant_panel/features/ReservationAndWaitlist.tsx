@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '../../ui/card';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
@@ -139,7 +139,7 @@ export function ReservationsAndWaitlist({ restaurantId }: ReservationsAndWaitlis
   });
 
   // Load reservations from Firestore (only affects the list area)
-  const loadReservations = async () => {
+  const loadReservations = useCallback(async () => {
     if (!restaurantId) {
       setReservations([]);
       setListLoading(false);
@@ -160,11 +160,11 @@ export function ReservationsAndWaitlist({ restaurantId }: ReservationsAndWaitlis
     } finally {
       setListLoading(false);
     }
-  };
+  }, [restaurantId]);
 
   useEffect(() => {
     loadReservations();
-  }, [restaurantId]);
+  }, [loadReservations]);
 
   // Filter reservations based on selected filter
   const filteredReservations = reservations.filter(reservation => {
